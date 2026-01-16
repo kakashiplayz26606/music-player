@@ -1,48 +1,65 @@
-import sys
-import os
-import subprocess
+# wellcome , its a simple music player / downloader 
+import os # for file operations
+import yt_dlp # for downloading mp3 from youtube
+import pygame # for playing music
 
-MUSIC_FOLDER = "music"
-os.makedirs(MUSIC_FOLDER, exist_ok=True)
+MUSIC_FOLDER = "music" # folder to store downloaded mp3 files
+os.makedirs(MUSIC_FOLDER, exist_ok=True) # create music folder if it doesn't exist
 
-choice = sys.argv[1] if len(sys.argv) > 1 else None
+def download_mp3(query): # function to download mp3 from youtube
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'outtmpl': f'{MUSIC_FOLDER}/%(title)s.%(ext)s',
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192',
+        }],
+        'quiet': False
+    } # youtube-dl options
 
-def download():
-    query = input("Enter YouTube URL or song name: ")
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl: # download the mp3
+        if query.startswith("http"): # if the query is a URL
+            ydl.download([query]) # download from URL
+        else:
+            ydl.download([f"ytsearch1:{query}"]) # search and download
 
-    cmd = [
-        "yt-dlp",
-        "-x",
-        "--audio-format", "mp3",
-        "-o", f"{MUSIC_FOLDER}/%(title)s.%(ext)s",
-        query if query.startswith("http") else f"ytsearch1:{query}"
-    ]
+def play_music(): # function to play downloaded mp3 files
+    files = [f for f in os.listdir(MUSIC_FOLDER) if f.endswith(".mp3")]    # list all mp3 files in music folder
 
-    subprocess.run(cmd)
+    if not files: # if no mp3 files found
+        print("❌ No MP3 files found.") 
+        return # exit function
 
-def play():
-    files = [f for f in os.listdir(MUSIC_FOLDER) if f.endswith(".mp3")]
+    print("\n🎵 Songs:") 
+    for i, file in enumerate(files, 1):
+        print(f"{i}. {file}")  # display list of songs
 
-    if not files:
-        print("❌ No songs found in music folder")
-        return
+    choice = int(input("\nSelect song number: ")) - 1
+    song_path = os.path.join(MUSIC_FOLDER, files[choice]) # get selected song path
 
-    print("\n🎶 Songs:")
-    for i, f in enumerate(files, 1):
-        print(f"{i}. {f}")
+    pygame.mixer.init()
+    pygame.mixer.music.load(song_path)
+    pygame.mixer.music.play()  # play the selected song
 
-    idx = int(input("\nChoose song number: ")) - 1
-    song = os.path.join(MUSIC_FOLDER, files[idx])
+    print("\n▶ Playing... Press ENTER to stop") # wait for user input to stop
+    input()
+    pygame.mixer.music.stop() # stop the music
 
-    # cross-platform player
-    if os.name == "nt":
-        os.startfile(song)
+def main():
+    print("\n1 = Download")
+    print("2 = Play")
+    choice = input("\nChoose option: ") # get user choice
+
+    if choice == "1":
+        query = input("Enter YouTube URL or song name: ") # get download query
+        download_mp3(query) # download the mp3
+
+    elif choice == "2":
+        play_music() # play the mp3 files
+
     else:
-        subprocess.run(["ffplay", "-nodisp", "-autoexit", song])
+        print("❌ Invalid option") # handle invalid option
 
-if choice == "1":
-    download()
-elif choice == "2":
-    play()
-else:
-    print("❌ Invalid option")
+if __name__ == "__main__":
+    main() # run the main function  
